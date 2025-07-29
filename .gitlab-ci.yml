@@ -1,0 +1,33 @@
+stages:
+  - build
+  - integration
+  - uat
+  - performance
+  - release
+  - deploy
+  - notify
+
+build:
+  stage: build
+  image: docker:20.10
+  services:
+    - docker:dind
+  script:
+    - echo "Building fake Docker image..."
+    - echo "FROM alpine:latest" > Dockerfile
+    - docker build -t fake-image:latest .
+  artifacts:
+    paths:
+      - Dockerfile
+    expire_in: 1 hour
+
+integration_test:
+  stage: integration
+  image: alpine:latest
+  script:
+    - echo "Running Integration Tests..."
+    - echo "All integration tests passed!" > integration_report.txt
+  artifacts:
+    paths:
+      - integration_report.txt
+    expire_in: 1 hour

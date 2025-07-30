@@ -1,33 +1,53 @@
 stages:
   - build
-  - integration
-  - uat
+  - test
   - performance
-  - release
-  - deploy
-  - notify
+
+variables:
+  IMAGE_NAME: email-validator:1.0
 
 build:
   stage: build
-  image: docker:20.10
+  image: docker:latest
   services:
     - docker:dind
   script:
-    - echo "Building fake Docker image..."
-    - echo "FROM alpine:latest" > Dockerfile
-    - docker build -t fake-image:latest .
+    - docker build -t $IMAGE_NAME .
+    # حفظ الصورة artifact عشان مراحل ثانية تستخدمها
+    - docker save $IMAGE_NAME -o docker-image.tar
   artifacts:
     paths:
-      - Dockerfile
-    expire_in: 1 hour
+      - docker-image.tar
 
 integration_test:
-  stage: integration
-  image: alpine:latest
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  dependencies:
+    - build
   script:
-    - echo "Running Integration Tests..."
-    - echo "All integration tests passed!" > integration_report.txt
-  artifacts:
-    paths:
-      - integration_report.txt
-    expire_in: 1 hour
+    # استرجاع الصورة
+    - docker load -i docker-image.tar
+    # تشغيل الحاوية وتنفيذ اختبارات داخلها (تأكد أن عندك سكربت الاختبار داخل الصورة)
+    - docker run --rm $IMAGE_NAME pytest tests/integration/
+
+uat_test:
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  dependencies:
+    - build
+  script:
+    - docker load -i docker-image.tar
+    - docker run --rm $IMAGE_NAME pytest tests/uat/
+
+performance_test:
+  stage: performance
+  image: openjdk:11
+  script:
+    - apt-get update && apt-get install -y wget unzip
+    - wget https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/3.9.5/gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+    - unzip gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+    - ./gatling-charts-highcharts-bundle-3.9.5/bin/gatling.sh -s simulations.BasicSimulation

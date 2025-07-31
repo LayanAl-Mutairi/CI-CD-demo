@@ -100,7 +100,10 @@ notify:
   stage: notify
   image: appropriate/curl
   script:
-    - curl -X POST -H 'Content-type: application/json' --data '{"text":"Pipeline completed successfully!"}' $SLACK_WEBHOOK_URL
+    - >
+      curl -X POST -H "Content-type: application/json" \
+      --data "{\"text\":\"Pipeline completed successfully!\"}" \
+      $SLACK_WEBHOOK_URL
   when: on_success
   only:
     - tags

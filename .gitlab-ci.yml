@@ -69,6 +69,7 @@ performance_test:
     - apt-get update && apt-get install -y wget unzip curl
     - wget https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/3.9.5/gatling-charts-highcharts-bundle-3.9.5-bundle.zip
     - unzip gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+    - cp gatling/simulations/BasicSimulation.scala gatling-charts-highcharts-bundle-3.9.5/user-files/simulations/
     - echo "1" | ./gatling-charts-highcharts-bundle-3.9.5/bin/gatling.sh -s simulations.BasicSimulation
 
 release:

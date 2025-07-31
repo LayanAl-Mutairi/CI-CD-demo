@@ -1,4 +1,7 @@
 import requests
+
+BASE_URL = "http://localhost:5000"
+
 def test_uat_multiple_scenarios():
     # سيناريو صحيح
     payload = {"email": "validuser@gmail.com", "national_id": "1123456789"}

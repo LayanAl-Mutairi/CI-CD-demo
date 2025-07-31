@@ -2,9 +2,14 @@ stages:
   - build
   - test
   - performance
+  - release
+  - deploy
+  - notify
 
 variables:
   IMAGE_NAME: email-validator:1.0
+  REGISTRY: $CI_REGISTRY_IMAGE
+  TAG: $CI_COMMIT_SHORT_SHA
 
 build:
   stage: build
@@ -13,6 +18,7 @@ build:
     - docker:dind
   script:
     - docker build -t $IMAGE_NAME .
+    - docker tag $IMAGE_NAME $REGISTRY:$CI_COMMIT_SHA
     - docker save $IMAGE_NAME -o docker-image.tar
   artifacts:
     paths:
@@ -27,12 +33,15 @@ integration_test:
     - build
   script:
     - docker load -i docker-image.tar
-    # شغل السيرفر في الخلفية داخل الحاوية، ثم شغل الاختبارات
     - >
       docker run --rm -p 5000:5000 $IMAGE_NAME /bin/sh -c "
       python app.py & 
       sleep 5 && 
       pytest tests/integration/"
+  artifacts:
+    when: always
+    reports:
+      junit: tests/integration/report.xml
 
 uat_test:
   stage: test
@@ -43,18 +52,55 @@ uat_test:
     - build
   script:
     - docker load -i docker-image.tar
-    # نفس طريقة تشغيل السيرفر والاختبارات لـ UAT
     - >
       docker run --rm -p 5000:5000 $IMAGE_NAME /bin/sh -c "
       python app.py & 
       sleep 5 && 
       pytest tests/uat/"
+  artifacts:
+    when: always
+    reports:
+      junit: tests/uat/report.xml
 
 performance_test:
   stage: performance
   image: openjdk:11
   script:
-    - apt-get update && apt-get install -y wget unzip
+    - apt-get update && apt-get install -y wget unzip curl
     - wget https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/3.9.5/gatling-charts-highcharts-bundle-3.9.5-bundle.zip
     - unzip gatling-charts-highcharts-bundle-3.9.5-bundle.zip
     - ./gatling-charts-highcharts-bundle-3.9.5/bin/gatling.sh -s simulations.BasicSimulation
+
+release:
+  stage: release
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker load -i docker-image.tar
+    - docker tag $IMAGE_NAME $REGISTRY:$TAG
+    - echo $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker push $REGISTRY:$TAG
+  only:
+    - tags
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl config set-cluster your-cluster --server=$KUBE_SERVER --insecure-skip-tls-verify=true
+    - kubectl config set-credentials deployer --token=$KUBE_TOKEN
+    - kubectl config set-context default --cluster=your-cluster --user=deployer
+    - kubectl config use-context default
+    - helm upgrade --install email-validator ./helm-chart --set image.repository=$REGISTRY --set image.tag=$TAG
+  only:
+    - tags
+
+notify:
+  stage: notify
+  image: appropriate/curl
+  script:
+    - curl -X POST -H 'Content-type: application/json' --data '{"text":"Pipeline completed successfully!"}' $SLACK_WEBHOOK_URL
+  when: on_success
+  only:
+    - tags

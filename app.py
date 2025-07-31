@@ -4,26 +4,27 @@ import re
 app = Flask(__name__)
 
 def is_valid_email(email):
-    if not email or not email.endswith("@gmail.com"):
-        return False
-    username = email[:-10]
-    if len(username) == 0 or username[0].isdigit():
-        return False
-    if not re.match(r'^[a-zA-Z0-9]+$', username):
-        return False
-    return True
+    # تحقق بسيط: يبدأ بحرف، ينتهي بـ gmail.com فقط
+    pattern = r"^[a-zA-Z][a-zA-Z0-9_.]*@gmail\.com$"
+    return re.match(pattern, email) is not None
 
 def is_valid_national_id(national_id):
-    return bool(re.match(r'^[1|2]\d{9}$', national_id))
+    # يبدأ بالرقم 1 و 10 أرقام بالتمام
+    pattern = r"^[1]\d{9}$"
+    return re.match(pattern, national_id) is not None
 
 @app.route('/validate', methods=['POST'])
 def validate():
-    data = request.get_json()
-
-    email = data.get('email') if data else None
-    national_id = data.get('national_id') if data else None
-
+    data = request.get_json(force=True, silent=True)
     errors = {}
+
+    if not data:
+        errors['email'] = "Email is required."
+        errors['national_id'] = "National ID is required."
+        return jsonify({"valid": False, "errors": errors}), 400
+
+    email = data.get('email')
+    national_id = data.get('national_id')
 
     if not email:
         errors['email'] = "Email is required."
@@ -36,17 +37,9 @@ def validate():
         errors['national_id'] = "Invalid national ID format."
 
     if errors:
-        return jsonify({
-            "status": "fail",
-            "valid": False,
-            "errors": errors
-        }), 400
+        return jsonify({"valid": False, "errors": errors}), 400
 
-    return jsonify({
-        "status": "success",
-        "valid": True,
-        "message": "Email and National ID are valid."
-    }), 200
+    return jsonify({"valid": True, "message": "Email and National ID are valid."}), 200
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)

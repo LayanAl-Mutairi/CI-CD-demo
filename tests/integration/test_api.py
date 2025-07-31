@@ -4,38 +4,23 @@ import requests
 BASE_URL = "http://localhost:5000"
 
 def test_validate_success():
-    url = f"{BASE_URL}/validate"
     payload = {
         "email": "user123@gmail.com",
         "national_id": "1234567890"
     }
-    response = requests.post(url, json=payload)
-    
+    response = requests.post(f"{BASE_URL}/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["valid"] == True
-    assert "Email and National ID are valid" in data["message"]
+    assert data["valid"] is True
+    assert data["message"] == "Email and National ID are valid."
 
-def test_validate_fail_invalid_email():
-    url = f"{BASE_URL}/validate"
+def test_fail_invalid_email_no_gmail():
     payload = {
-        "email": "user123gmail.com",
+        "email": "user123@yahoo.com",
         "national_id": "1234567890"
     }
-    response = requests.post(url, json=payload)
-    
-    assert response.status_code == 400 or response.status_code == 200
+    response = requests.post(f"{BASE_URL}/validate", json=payload)
+    assert response.status_code == 400
     data = response.json()
-    assert data["valid"] == False
-
-def test_validate_fail_invalid_national_id():
-    url = f"{BASE_URL}/validate"
-    payload = {
-        "email": "user123@gmail.com",
-        "national_id": "1234"
-    }
-    response = requests.post(url, json=payload)
-    
-    assert response.status_code == 400 or response.status_code == 200
-    data = response.json()
-    assert data["valid"] == False
+    assert data["valid"] is False
+    assert data["errors"]["email"] == "Invalid email format."

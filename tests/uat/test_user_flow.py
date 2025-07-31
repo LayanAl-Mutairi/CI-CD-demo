@@ -1,16 +1,23 @@
-import pytest
-import requests
-
-BASE_URL = "http://localhost:5000"
-
-def test_complete_user_flow():
-    # اختبار يدمج خطوات متعددة ممكنة في التطبيق
-    payload = {
-        "email": "test.user@example.com",
-        "national_id": "1234567890"
-    }
+def test_uat_multiple_scenarios():
+    # سيناريو صحيح
+    payload = {"email": "validuser@gmail.com", "national_id": "1123456789"}
     response = requests.post(f"{BASE_URL}/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data.get("valid") == True
-    assert "valid" in data.get("message").lower()
+    assert data["valid"] is True
+
+    # سيناريو بريد خاطئ
+    payload["email"] = "invaliduser@yahoo.com"
+    response = requests.post(f"{BASE_URL}/validate", json=payload)
+    assert response.status_code == 400
+    data = response.json()
+    assert data["valid"] is False
+    assert "email" in data["errors"]
+
+    # سيناريو رقم هوية خاطئ
+    payload = {"email": "validuser@gmail.com", "national_id": "0123456789"}
+    response = requests.post(f"{BASE_URL}/validate", json=payload)
+    assert response.status_code == 400
+    data = response.json()
+    assert data["valid"] is False
+    assert "national_id" in data["errors"]

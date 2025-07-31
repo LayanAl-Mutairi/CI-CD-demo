@@ -83,6 +83,7 @@ tag_release:
     - git config --global user.name "CI Bot"
     - export NEW_TAG="v$(date +%Y%m%d%H%M%S)"
     - git tag $NEW_TAG
+    - git remote set-url origin https://gitlab-ci-token:${GITLAB_TOKEN}@gitlab.com/layan468n/ci-demo.git
     - git push origin $NEW_TAG
   only:
     - main

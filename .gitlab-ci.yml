@@ -2,9 +2,9 @@ stages:
   - build
   - test
   - performance
+  - tag_release 
   - release
-  - deploy
-  - notify
+  
 
 variables:
   IMAGE_NAME: email-validator:1.0
@@ -72,6 +72,23 @@ performance_test:
     - cp gatling/simulations/BasicSimulation.scala gatling-charts-highcharts-bundle-3.9.5/user-files/simulations/
     - echo "1" | ./gatling-charts-highcharts-bundle-3.9.5/bin/gatling.sh -s simulations.BasicSimulation
 
+tag_release:
+  stage: tag_release
+  dependencies:
+    - integration_test
+    - uat_test
+    - performance_test
+  script:
+    - git config --global user.email "ci-bot@example.com"
+    - git config --global user.name "CI Bot"
+    - export NEW_TAG="v$(date +%Y%m%d%H%M%S)"
+    - git tag $NEW_TAG
+    - git push origin $NEW_TAG
+  only:
+    - main
+  when: on_success
+
+
 release:
   stage: release
   image: docker:latest
@@ -82,29 +99,5 @@ release:
     - docker tag $IMAGE_NAME $REGISTRY:$TAG
     - echo $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - docker push $REGISTRY:$TAG
-  only:
-    - tags
-
-deploy:
-  stage: deploy
-  image: bitnami/kubectl:latest
-  script:
-    - kubectl config set-cluster your-cluster --server=$KUBE_SERVER --insecure-skip-tls-verify=true
-    - kubectl config set-credentials deployer --token=$KUBE_TOKEN
-    - kubectl config set-context default --cluster=your-cluster --user=deployer
-    - kubectl config use-context default
-    - helm upgrade --install email-validator ./helm-chart --set image.repository=$REGISTRY --set image.tag=$TAG
-  only:
-    - tags
-
-notify:
-  stage: notify
-  image: appropriate/curl
-  script:
-    - >
-      curl -X POST -H "Content-type: application/json" \
-      --data "{\"text\":\"Pipeline completed successfully!\"}" \
-      $SLACK_WEBHOOK_URL
-  when: on_success
   only:
     - tags

@@ -7,7 +7,7 @@ import scala.concurrent.duration._
 
 class BasicSimulation extends Simulation {
 
-  val httpProtocol = http.baseUrl("http://host.docker.internal:5000") // أو عنوان الحاوية
+  val httpProtocol = http.baseUrl("http://host.docker.internal:5000") 
 
   val scn = scenario("Basic Load Test")
     .exec(

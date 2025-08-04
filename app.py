@@ -4,12 +4,12 @@ import re
 app = Flask(__name__)
 
 def is_valid_email(email):
-    # تحقق بسيط: يبدأ بحرف، ينتهي بـ gmail.com فقط
+   # Simple validation: starts with a letter, ends with gmail.com only
     pattern = r"^[a-zA-Z][a-zA-Z0-9_.]*@gmail\.com$"
     return re.match(pattern, email) is not None
 
 def is_valid_national_id(national_id):
-    # يبدأ بالرقم 1 و 10 أرقام بالتمام
+    # Must start with digit 1 and be exactly 10 digits long
     pattern = r"^[1]\d{9}$"
     return re.match(pattern, national_id) is not None
 
